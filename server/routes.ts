@@ -363,22 +363,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Using prompt: ${prompt}`);
 
-      // Handle image URL for Replit deployment
+      // Handle image URL for Replicate access - must be public
       let processedImageUrl = imageUrl;
       
-      // Check if running on Replit
-      const replicateImageUrl = process.env.REPLIT_DEV_DOMAIN 
-        ? imageUrl.replace('http://localhost:5000', `https://${process.env.REPLIT_DEV_DOMAIN}`)
-        : imageUrl;
+      // If image is local (starts with /uploads), we need to provide a public URL
+      if (imageUrl.startsWith('/uploads')) {
+        const domain = process.env.REPLIT_DEV_DOMAIN 
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+          : '';
+        
+        if (domain) {
+          processedImageUrl = `${domain}${imageUrl}`;
+        }
+      }
       
-      if (imageUrl.includes('localhost') || imageUrl.includes('127.0.0.1')) {
-        processedImageUrl = replicateImageUrl || imageUrl;
+      // Check if running on Replit - ensure URL is correct for Replicate to access
+      if (processedImageUrl.includes('localhost') || processedImageUrl.includes('127.0.0.1')) {
+        const domain = process.env.REPLIT_DEV_DOMAIN;
+        if (domain) {
+          processedImageUrl = processedImageUrl.replace(/http:\/\/localhost:\d+/, `https://${domain}`)
+                                             .replace(/http:\/\/127\.0\.0\.1:\d+/, `https://${domain}`);
+        }
       }
 
-      console.log(`Final image URL: ${processedImageUrl}`);
-      console.log('Using Stable Diffusion v1.5 for professional furniture customization...');
+      console.log(`Final image URL for Replicate: ${processedImageUrl}`);
+      console.log('Using SDXL for professional furniture customization...');
       
-      // Use SDXL - specific version string required by Replicate
+      // Use a valid SDXL version from Replicate
       const output = await replicate.run(
         "stability-ai/sdxl:7762fd07cf2741a6c0b355e0577933f4444529973c67e792c84a956383c130e1",
         {
