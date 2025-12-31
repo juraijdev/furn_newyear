@@ -376,24 +376,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`Final image URL: ${processedImageUrl}`);
-      console.log('Using FLUX Fill Pro for professional inpainting...');
+      console.log('Using FLUX Pro for professional image transformation...');
       
-      // Use FLUX Fill Pro - professional inpainting model optimized for furniture
+      // Use FLUX Pro - professional model for image transformation with text guidance
       const output = await replicate.run(
-        "black-forest-labs/flux-fill-pro",
+        "black-forest-labs/flux-pro",
         {
           input: {
-            image: processedImageUrl,
             prompt: prompt,
-            prompt_strength: 0.85,
-            seed: Math.floor(Math.random() * 1000000),
-            steps: 24,
-            guidance: 3.5
+            image: processedImageUrl,
+            steps: 28,
+            guidance: 3.5,
+            interval: 2,
+            safety_tolerance: 2,
+            prompt_expansion: "enable"
           }
         }
       );
 
-      console.log('FLUX Fill Pro output:', JSON.stringify(output, null, 2));
+      console.log('FLUX Pro output:', JSON.stringify(output, null, 2));
       
       let resultUrl: string;
       if (Array.isArray(output) && output.length > 0) {
