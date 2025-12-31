@@ -395,24 +395,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Use SDXL for image transformation - highly reliable model
-      console.log('Using Stability SDXL for furniture color transformation...');
+      // Use Anything V3 model - proven stable diffusion model for image transformation
+      console.log('Using Anything V3.0 model for furniture color transformation...');
       const output = await replicate.run(
-        "stability-ai/sdxl",
+        "cjwbw/anything-v3.0",
         {
           input: {
             prompt: prompt,
-            negative_prompt: "blurry, low quality, distorted, ugly, bad proportions",
-            image: processedImageUrl,
-            num_inference_steps: 30,
+            negative_prompt: "blurry, low quality, distorted, ugly, bad proportions, text, watermark",
+            num_outputs: 1,
+            num_inference_steps: 25,
             guidance_scale: 7.5,
-            scheduler: "K_EULER",
-            strength: 0.7
+            width: 512,
+            height: 512,
+            scheduler: "DPMSolverMultistep"
           }
         }
       );
 
-      console.log('SDXL output:', JSON.stringify(output, null, 2));
+      console.log('Anything V3.0 output:', JSON.stringify(output, null, 2));
       
       let resultUrl: string;
       if (Array.isArray(output) && output.length > 0) {
