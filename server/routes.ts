@@ -376,31 +376,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`Final image URL: ${processedImageUrl}`);
-      console.log('Using FLUX Pro for professional image transformation...');
+      console.log('Using Stable Diffusion v1.5 for professional furniture customization...');
       
-      // Use FLUX Pro - professional model for image transformation with text guidance
+      // Use Stable Diffusion v1.5 - proven reliable model for professional image generation
       const output = await replicate.run(
-        "black-forest-labs/flux-pro",
+        "stability-ai/stable-diffusion",
         {
           input: {
             prompt: prompt,
-            image: processedImageUrl,
-            steps: 28,
-            guidance: 3.5,
-            interval: 2,
-            safety_tolerance: 2,
-            prompt_expansion: "enable"
+            negative_prompt: "blurry, low quality, distorted, deformed, pixelated",
+            num_outputs: 1,
+            num_inference_steps: 50,
+            guidance_scale: 7.5,
+            scheduler: "DPMSolverMultistep",
+            seed: Math.floor(Math.random() * 1000000)
           }
         }
       );
 
-      console.log('FLUX Pro output:', JSON.stringify(output, null, 2));
+      console.log('Stable Diffusion v1.5 output:', JSON.stringify(output, null, 2));
       
       let resultUrl: string;
+      
+      // Handle different output formats
       if (Array.isArray(output) && output.length > 0) {
         resultUrl = output[0];
       } else if (typeof output === 'string') {
         resultUrl = output;
+      } else if (output && typeof output === 'object') {
+        // Handle object format with URL field
+        if ('output' in output && typeof output.output === 'string') {
+          resultUrl = output.output;
+        } else if ('url' in output && typeof output.url === 'string') {
+          resultUrl = output.url;
+        } else if (Object.values(output).some(v => typeof v === 'string' && v.startsWith('http'))) {
+          // Find first URL in object
+          resultUrl = Object.values(output).find(v => typeof v === 'string' && v.startsWith('http')) as string;
+        } else {
+          throw new Error(`Invalid output format from model: ${JSON.stringify(output)}`);
+        }
       } else {
         throw new Error('Invalid output format from model');
       }
