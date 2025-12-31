@@ -366,14 +366,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle image URL for Replicate access - must be public
       let processedImageUrl = imageUrl;
       
-      // If image is local (starts with /uploads), we need to provide a public URL
-      if (imageUrl.startsWith('/uploads')) {
+      // If image is local (starts with /uploads or /attached_assets), we need to provide a public URL
+      if (imageUrl.startsWith('/uploads') || imageUrl.startsWith('/attached_assets')) {
         const domain = process.env.REPLIT_DEV_DOMAIN 
           ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
           : '';
         
         if (domain) {
           processedImageUrl = `${domain}${imageUrl}`;
+        }
+      } else if (imageUrl.startsWith('/@fs')) {
+        // Handle Vite's @fs paths
+        const domain = process.env.REPLIT_DEV_DOMAIN;
+        if (domain) {
+          const workspacePath = imageUrl.split('/workspace/')[1];
+          if (workspacePath) {
+            processedImageUrl = `https://${domain}/${workspacePath}`;
+          }
         }
       }
       
