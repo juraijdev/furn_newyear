@@ -378,17 +378,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Final image URL: ${processedImageUrl}`);
       console.log('Using Stable Diffusion v1.5 for professional furniture customization...');
       
-      // Use Stable Diffusion v1.5 - proven reliable model for professional image generation
+      // Use SDXL - specific version string required by Replicate
       const output = await replicate.run(
-        "stability-ai/stable-diffusion",
+        "stability-ai/sdxl:7762fd07cf2741a6c0b355e0577933f4444529973c67e792c84a956383c130e1",
         {
           input: {
             prompt: prompt,
             negative_prompt: "blurry, low quality, distorted, deformed, pixelated",
             num_outputs: 1,
+            scheduler: "K_EULER",
             num_inference_steps: 50,
             guidance_scale: 7.5,
-            scheduler: "DPMSolverMultistep",
             seed: Math.floor(Math.random() * 1000000)
           }
         }
