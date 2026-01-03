@@ -398,41 +398,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Final image URL for Replicate: ${processedImageUrl}`);
       console.log('Using SDXL for professional furniture customization...');
       
-      // Use stability-ai/sdxl with a fallback logic for better reliability
-      const tryRunModel = async (modelSlug: string) => {
-        try {
-          return await replicate.run(
-            modelSlug as any,
-            {
-              input: {
-                prompt: prompt,
-                negative_prompt: "blurry, low quality, distorted, deformed, pixelated",
-                num_outputs: 1,
-                scheduler: "K_EULER",
-                num_inference_steps: 50,
-                guidance_scale: 7.5,
-                seed: Math.floor(Math.random() * 1000000)
+      // Use stability-ai/sdxl with a fallback and retry logic for 429 errors
+      const tryRunModel = async (modelSlug: string, retries = 3) => {
+        for (let i = 0; i < retries; i++) {
+          try {
+            return await replicate.run(
+              modelSlug as any,
+              {
+                input: {
+                  prompt: prompt,
+                  negative_prompt: "blurry, low quality, distorted, deformed, pixelated",
+                  num_outputs: 1,
+                  scheduler: "K_EULER",
+                  num_inference_steps: 50,
+                  guidance_scale: 7.5,
+                  seed: Math.floor(Math.random() * 1000000)
+                }
               }
+            );
+          } catch (error: any) {
+            if (error.status === 429 && i < retries - 1) {
+              const waitTime = (i + 1) * 2000;
+              console.log(`Rate limited (429). Retrying in ${waitTime}ms...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
             }
-          );
-        } catch (error: any) {
-          console.error(`Error running model ${modelSlug}:`, error);
-          // Fallback to the known stable SDXL version ID if the slug fails
-          console.log("Falling back to stable SDXL version...");
-          return await replicate.run(
-            "stability-ai/sdxl:7762fd07cf2741a6c0b355e0577933f4444529973c67e792c84a956383c130e1",
-            {
-              input: {
-                prompt: prompt,
-                negative_prompt: "blurry, low quality, distorted, deformed, pixelated",
-                num_outputs: 1,
-                scheduler: "K_EULER",
-                num_inference_steps: 50,
-                guidance_scale: 7.5,
-                seed: Math.floor(Math.random() * 1000000)
-              }
+
+            console.error(`Error running model ${modelSlug}:`, error);
+            
+            // Fallback to the known stable SDXL version ID if the slug fails (and not a 429)
+            if (modelSlug === "stability-ai/sdxl" && error.status !== 429) {
+              console.log("Falling back to stable SDXL version...");
+              return await replicate.run(
+                "stability-ai/sdxl:7762fd07cf2741a6c0b355e0577933f4444529973c67e792c84a956383c130e1",
+                {
+                  input: {
+                    prompt: prompt,
+                    negative_prompt: "blurry, low quality, distorted, deformed, pixelated",
+                    num_outputs: 1,
+                    scheduler: "K_EULER",
+                    num_inference_steps: 50,
+                    guidance_scale: 7.5,
+                    seed: Math.floor(Math.random() * 1000000)
+                  }
+                }
+              );
             }
-          );
+            throw error;
+          }
         }
       };
 
