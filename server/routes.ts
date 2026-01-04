@@ -398,10 +398,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Final image URL for Replicate: ${processedImageUrl}`);
       console.log('Using SDXL for professional furniture customization...');
       
-      // Use stability-ai/sdxl with a fallback and retry logic for 429 errors
-      const tryRunModel = async (modelSlug: string, retries = 3) => {
+      // Use stability-ai/sdxl with a fallback and robust retry logic for 429 errors
+      const tryRunModel = async (modelSlug: string, retries = 5) => {
         for (let i = 0; i < retries; i++) {
           try {
+            console.log(`AI attempt ${i + 1} for ${modelSlug}...`);
             return await replicate.run(
               modelSlug as any,
               {
@@ -417,9 +418,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             );
           } catch (error: any) {
-            if (error.status === 429 && i < retries - 1) {
-              const waitTime = (i + 1) * 2000;
-              console.log(`Rate limited (429). Retrying in ${waitTime}ms...`);
+            // Check for rate limiting (429)
+            if (error.status === 429 || (error.message && error.message.includes('429'))) {
+              // Extract retry_after from response if available, otherwise exponential backoff
+              const retryAfter = error.response?.headers?.get('retry-after');
+              const waitTime = retryAfter ? (parseInt(retryAfter) + 2) * 1000 : Math.pow(2, i) * 3000;
+              
+              console.warn(`Rate limited (429). Waiting ${waitTime}ms before retry ${i + 1}/${retries}...`);
               await new Promise(resolve => setTimeout(resolve, waitTime));
               continue;
             }
@@ -427,7 +432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error(`Error running model ${modelSlug}:`, error);
             
             // Fallback to the known stable SDXL version ID if the slug fails (and not a 429)
-            if (modelSlug === "stability-ai/sdxl" && error.status !== 429) {
+            if (modelSlug === "stability-ai/sdxl") {
               console.log("Falling back to stable SDXL version...");
               return await replicate.run(
                 "stability-ai/sdxl:7762fd07cf2741a6c0b355e0577933f4444529973c67e792c84a956383c130e1",
@@ -447,6 +452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             throw error;
           }
         }
+        throw new Error('Maximum retries reached for Replicate API');
       };
 
       const output = await tryRunModel("stability-ai/sdxl");
